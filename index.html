@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TierMaker</title>
+<style>
+:root {
+  --bg: #0d0d1a;
+  --bg2: #141428;
+  --surface: #1c1c3a;
+  --surface2: #252550;
+  --text: #e8e8f0;
+  --text-dim: #8888aa;
+  --accent: #6c5ce7;
+  --accent2: #a29bfe;
+  --danger: #e74c3c;
+  --success: #2ecc71;
+  --border: #2a2a50;
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+header h1 {
+  font-size: 1.6rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+button:hover { background: var(--surface2); border-color: var(--accent); }
+button:active { transform: scale(0.96); }
+button.danger { border-color: var(--danger); color: var(--danger); }
+button.danger:hover { background: var(--danger); color: #fff; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent2); }
+
+/* Tiers */
+#tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+.tier-row {
+  display: flex;
+  min-height: 80px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.tier-label {
+  width: 80px;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+.tier-label input {
+  width: 100%;
+  text-align: center;
+  background: rgba(0,0,0,0.3);
+  border: none;
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 4px;
+  border-radius: 4px;
+  outline: none;
+}
+.tier-label .tier-controls {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+}
+.tier-row:hover .tier-controls { display: flex; }
+.tier-controls button {
+  padding: 2px 5px;
+  font-size: 0.7rem;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+}
+.tier-controls button:hover { background: rgba(0,0,0,0.8); }
+.tier-color-picker {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+  display: none;
+}
+.tier-row:hover .tier-color-picker { display: block; }
+.tier-color-picker input {
+  width: 16px;
+  height: 16px;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.tier-items {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg2);
+  align-content: flex-start;
+}
+.tier-items.drag-over {
+  background: var(--surface2);
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+/* Items */
+.tier-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  transition: opacity 0.1s, transform 0.1s;
+}
+.tier-item:hover { border-color: var(--accent); }
+.tier-item.dragging { opacity: 0.3; }
+.tier-item.ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0.85;
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.tier-item .item-delete {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-left: 4px;
+}
+.tier-item .item-delete:hover { color: var(--danger); }
+
+/* Pool */
+#pool-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+#pool-header {
+  background: var(--surface);
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+}
+#pool-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px;
+  min-height: 70px;
+  background: var(--bg2);
+  align-content: flex-start;
+}
+#pool-items.drag-over {
+  background: var(--surface2);
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+/* Modal */
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+#modal-overlay.active { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 90vw;
+}
+.modal h3 { margin-bottom: 16px; }
+.modal input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  transition: transform 0.3s;
+  z-index: 10001;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* Empty state */
+.empty-hint {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Add item input */
+#add-item-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.85rem;
+  width: 180px;
+}
+#add-item-input:focus { outline: none; border-color: var(--accent); }
+
+@media (max-width: 600px) {
+  .tier-label { width: 60px; min-width: 60px; font-size: 1.1rem; }
+  header h1 { font-size: 1.2rem; }
+  button { padding: 6px 10px; font-size: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TierMaker</h1>
+  <div class="toolbar">
+    <input type="text" id="add-item-input" placeholder="Agregar item...">
+    <button onclick="addItemFromInput()">+ Item</button>
+    <button onclick="document.getElementById('file-input').click()">Cargar TXT</button>
+    <input type="file" id="file-input" accept=".txt,text/plain" style="display:none" onchange="loadFile(event)">
+    <button onclick="addTier()">+ Tier</button>
+    <button onclick="exportJSON()">Exportar</button>
+    <button onclick="document.getElementById('import-input').click()">Importar</button>
+    <input type="file" id="import-input" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
+    <button class="danger" onclick="resetAll()">Reset</button>
+  </div>
+</header>
+
+<div id="tiers"></div>
+
+<div id="pool-section">
+  <div id="pool-header">Sin clasificar <span id="pool-count"></span></div>
+  <div id="pool-items"></div>
+</div>
+
+<div id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Nuevo Tier</h3>
+    <input type="text" id="modal-input" placeholder="Nombre del tier">
+    <div class="modal-actions">
+      <button onclick="closeModal()">Cancelar</button>
+      <button class="primary" id="modal-confirm">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DEFAULT_TIERS = [
+  { label: 'S', color: '#ff7f7f' },
+  { label: 'A', color: '#ffbf7f' },
+  { label: 'B', color: '#ffdf7f' },
+  { label: 'C', color: '#bfff7f' },
+  { label: 'D', color: '#7fffff' },
+  { label: 'F', color: '#7fbfff' },
+];
+
+const tiersContainer = document.getElementById('tiers');
+const poolItems = document.getElementById('pool-items');
+const poolCount = document.getElementById('pool-count');
+let itemIdCounter = 0;
+
+// ---- Init ----
+function init() {
+  DEFAULT_TIERS.forEach(t => createTier(t.label, t.color));
+  loadFromStorage();
+  updatePoolCount();
+}
+
+// ---- Tier Management ----
+function createTier(label, color) {
+  const row = document.createElement('div');
+  row.className = 'tier-row';
+  row.dataset.color = color;
+
+  const labelEl = document.createElement('div');
+  labelEl.className = 'tier-label';
+  labelEl.style.background = color;
+
+  const labelSpan = document.createElement('span');
+  labelSpan.textContent = label;
+  labelSpan.onclick = () => editLabel(labelSpan, labelEl);
+  labelEl.appendChild(labelSpan);
+
+  const controls = document.createElement('div');
+  controls.className = 'tier-controls';
+
+  const upBtn = document.createElement('button');
+  upBtn.textContent = '↑';
+  upBtn.title = 'Subir';
+  upBtn.onclick = (e) => { e.stopPropagation(); moveTier(row, -1); };
+  controls.appendChild(upBtn);
+
+  const downBtn = document.createElement('button');
+  downBtn.textContent = '↓';
+  downBtn.title = 'Bajar';
+  downBtn.onclick = (e) => { e.stopPropagation(); moveTier(row, 1); };
+  controls.appendChild(downBtn);
+
+  const delBtn = document.createElement('button');
+  delBtn.textContent = '✕';
+  delBtn.title = 'Eliminar';
+  delBtn.onclick = (e) => { e.stopPropagation(); deleteTier(row); };
+  controls.appendChild(delBtn);
+
+  labelEl.appendChild(controls);
+
+  const colorPicker = document.createElement('div');
+  colorPicker.className = 'tier-color-picker';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = color;
+  colorInput.onchange = () => {
+    labelEl.style.background = colorInput.value;
+    row.dataset.color = colorInput.value;
+    saveToStorage();
+  };
+  colorPicker.appendChild(colorInput);
+  labelEl.appendChild(colorPicker);
+
+  const itemsEl = document.createElement('div');
+  itemsEl.className = 'tier-items';
+  registerDropZone(itemsEl);
+
+  row.appendChild(labelEl);
+  row.appendChild(itemsEl);
+  tiersContainer.appendChild(row);
+  return row;
+}
+
+function editLabel(span, labelEl) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = span.textContent;
+  input.style.width = '90%';
+  input.maxLength = 3;
+  labelEl.replaceChild(input, span);
+  input.focus();
+  input.select();
+  const finish = () => {
+    span.textContent = input.value.trim() || '?';
+    labelEl.replaceChild(span, input);
+    saveToStorage();
+  };
+  input.onblur = finish;
+  input.onkeydown = (e) => { if (e.key === 'Enter') input.blur(); };
+}
+
+function moveTier(row, dir) {
+  const rows = [...tiersContainer.children];
+  const idx = rows.indexOf(row);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= rows.length) return;
+  if (dir < 0) tiersContainer.insertBefore(row, rows[newIdx]);
+  else tiersContainer.insertBefore(row, rows[newIdx].nextSibling);
+  saveToStorage();
+}
+
+function deleteTier(row) {
+  const items = row.querySelector('.tier-items');
+  while (items.firstChild) poolItems.appendChild(items.firstChild);
+  row.remove();
+  updatePoolCount();
+  saveToStorage();
+}
+
+function addTier() {
+  showModal('Nuevo Tier', '', (name) => {
+    if (!name) return;
+    const colors = ['#ff7f7f','#ffbf7f','#ffdf7f','#bfff7f','#7fffff','#7fbfff','#bf7fff','#ff7fff'];
+    const color = colors[tiersContainer.children.length % colors.length];
+    createTier(name, color);
+    saveToStorage();
+  });
+}
+
+// ---- Item Management ----
+function createItem(text) {
+  const item = document.createElement('div');
+  item.className = 'tier-item';
+  item.dataset.id = ++itemIdCounter;
+
+  const span = document.createElement('span');
+  span.textContent = text;
+  item.appendChild(span);
+
+  const del = document.createElement('span');
+  del.className = 'item-delete';
+  del.textContent = '✕';
+  del.onclick = (e) => { e.stopPropagation(); item.remove(); updatePoolCount(); saveToStorage(); };
+  item.appendChild(del);
+
+  registerDrag(item);
+  return item;
+}
+
+function addItemFromInput() {
+  const input = document.getElementById('add-item-input');
+  const text = input.value.trim();
+  if (!text) return;
+  poolItems.appendChild(createItem(text));
+  input.value = '';
+  updatePoolCount();
+  saveToStorage();
+}
+
+document.getElementById('add-item-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addItemFromInput();
+});
+
+// ---- File Loading ----
+function loadFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    if (lines.length === 0) { toast('El archivo está vacío'); return; }
+    lines.forEach(line => poolItems.appendChild(createItem(line)));
+    toast(`${lines.length} items cargados`);
+    updatePoolCount();
+    saveToStorage();
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ---- Drag and Drop (pointer-based, works on desktop + mobile) ----
+let dragState = null;
+
+function registerDrag(item) {
+  item.addEventListener('pointerdown', onPointerDown);
+}
+
+function onPointerDown(e) {
+  if (e.target.classList.contains('item-delete')) return;
+  const item = e.currentTarget;
+  e.preventDefault();
+  const rect = item.getBoundingClientRect();
+  dragState = {
+    item: item,
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top,
+    ghost: null,
+    started: false,
+    startX: e.clientX,
+    startY: e.clientY,
+    pointerId: e.pointerId,
+  };
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', onPointerUp);
+}
+
+function onPointerMove(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+
+  if (!dragState.started) {
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (Math.hypot(dx, dy) < 6) return;
+    dragState.started = true;
+
+    const ghost = dragState.item.cloneNode(true);
+    ghost.classList.add('ghost');
+    ghost.style.width = dragState.item.offsetWidth + 'px';
+    document.body.appendChild(ghost);
+    dragState.ghost = ghost;
+    dragState.item.classList.add('dragging');
+  }
+
+  dragState.ghost.style.left = (e.clientX - dragState.offsetX) + 'px';
+  dragState.ghost.style.top = (e.clientY - dragState.offsetY) + 'px';
+
+  clearDropHighlights();
+  const target = findDropTarget(e.clientX, e.clientY);
+  if (target && target.zone) {
+    target.zone.classList.add('drag-over');
+  }
+}
+
+function onPointerUp(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  document.removeEventListener('pointermove', onPointerMove);
+  document.removeEventListener('pointerup', onPointerUp);
+  document.removeEventListener('pointercancel', onPointerUp);
+
+  if (dragState.started) {
+    const target = findDropTarget(e.clientX, e.clientY);
+    if (target && target.zone) {
+      if (target.before && target.before !== dragState.item) {
+        target.zone.insertBefore(dragState.item, target.before);
+      } else {
+        target.zone.appendChild(dragState.item);
+      }
+    }
+    dragState.item.classList.remove('dragging');
+    if (dragState.ghost) dragState.ghost.remove();
+    updatePoolCount();
+    saveToStorage();
+  }
+
+  clearDropHighlights();
+  dragState = null;
+}
+
+function findDropTarget(x, y) {
+  const els = document.elementsFromPoint(x, y);
+  for (const el of els) {
+    if (el.classList.contains('tier-item') && el !== dragState.item) {
+      return { zone: el.parentNode, before: el };
+    }
+  }
+  for (const el of els) {
+    if (el.classList.contains('tier-items') || el.classList.contains('pool-items')) {
+      return { zone: el, before: null };
+    }
+  }
+  return null;
+}
+
+function clearDropHighlights() {
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function registerDropZone(zone) {
+  // Drop handling is done via pointer events in findDropTarget
+}
+
+// ---- Pool Count ----
+function updatePoolCount() {
+  const n = poolItems.children.length;
+  poolCount.textContent = n > 0 ? `(${n})` : '';
+}
+
+// ---- Modal ----
+let modalCallback = null;
+function showModal(title, defaultVal, callback) {
+  modalCallback = callback;
+  document.getElementById('modal-title').textContent = title;
+  const input = document.getElementById('modal-input');
+  input.value = defaultVal;
+  document.getElementById('modal-overlay').classList.add('active');
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+  modalCallback = null;
+}
+document.getElementById('modal-confirm').onclick = () => {
+  const val = document.getElementById('modal-input').value.trim();
+  const cb = modalCallback;
+  closeModal();
+  if (cb) cb(val);
+};
+document.getElementById('modal-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('modal-confirm').click();
+});
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-overlay') closeModal();
+});
+
+// ---- Toast ----
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ---- Export / Import ----
+function exportJSON() {
+  const data = {
+    tiers: [...tiersContainer.children].map(row => ({
+      label: row.querySelector('.tier-label span').textContent,
+      color: row.dataset.color,
+      items: [...row.querySelector('.tier-items').children].map(i => i.querySelector('span').textContent),
+    })),
+    pool: [...poolItems.children].map(i => i.querySelector('span').textContent),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tiermaker-' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Exportado');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      tiersContainer.innerHTML = '';
+      poolItems.innerHTML = '';
+      (data.tiers || []).forEach(t => {
+        const row = createTier(t.label, t.color);
+        const zone = row.querySelector('.tier-items');
+        (t.items || []).forEach(text => zone.appendChild(createItem(text)));
+      });
+      (data.pool || []).forEach(text => poolItems.appendChild(createItem(text)));
+      updatePoolCount();
+      saveToStorage();
+      toast('Importado');
+    } catch (err) {
+      toast('Error: archivo inválido');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ---- Reset ----
+function resetAll() {
+  if (!confirm('¿Borrar todo y volver a los tiers por defecto?')) return;
+  tiersContainer.innerHTML = '';
+  poolItems.innerHTML = '';
+  itemIdCounter = 0;
+  DEFAULT_TIERS.forEach(t => createTier(t.label, t.color));
+  updatePoolCount();
+  saveToStorage();
+  toast('Resetado');
+}
+
+// ---- LocalStorage ----
+function saveToStorage() {
+  try {
+    const data = {
+      tiers: [...tiersContainer.children].map(row => ({
+        label: row.querySelector('.tier-label span').textContent,
+        color: row.dataset.color,
+        items: [...row.querySelector('.tier-items').children].map(i => i.querySelector('span').textContent),
+      })),
+      pool: [...poolItems.children].map(i => i.querySelector('span').textContent),
+    };
+    localStorage.setItem('tiermaker-data', JSON.stringify(data));
+  } catch (e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem('tiermaker-data');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data.tiers || data.tiers.length === 0) return;
+    tiersContainer.innerHTML = '';
+    data.tiers.forEach(t => {
+      const row = createTier(t.label, t.color);
+      const zone = row.querySelector('.tier-items');
+      (t.items || []).forEach(text => zone.appendChild(createItem(text)));
+    });
+    (data.pool || []).forEach(text => poolItems.appendChild(createItem(text)));
+  } catch (e) {}
+}
+
+// ---- Start ----
+init();
+</script>
+</body>
+</html>
