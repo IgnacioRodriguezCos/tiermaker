@@ -191,6 +191,7 @@ button.primary:hover { background: var(--accent2); }
   margin-left: 4px;
 }
 .tier-item .item-delete:hover { color: var(--danger); }
+#pool-items .tier-item .item-delete { display: none; }
 
 /* Pool */
 #pool-section {
@@ -504,7 +505,12 @@ function createItem(text) {
   const del = document.createElement('span');
   del.className = 'item-delete';
   del.textContent = '✕';
-  del.onclick = (e) => { e.stopPropagation(); item.remove(); updatePoolCount(); saveToStorage(); };
+  del.onclick = (e) => {
+    e.stopPropagation();
+    poolItems.appendChild(item);
+    updatePoolCount();
+    saveToStorage();
+  };
   item.appendChild(del);
 
   registerDrag(item);
